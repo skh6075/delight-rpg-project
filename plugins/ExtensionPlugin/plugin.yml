@@ -1,0 +1,12 @@
+name: ExtensionPlugin
+author: skh6075
+main: skh6075\ExtensionPlugin\ExtensionPlugin
+version: 1.0.0
+api: 5.0.0
+
+src-namespace-prefix: skh6075\ExtensionPlugin
+
+load: POSTWORLD
+
+depend:
+  - DEVirion
