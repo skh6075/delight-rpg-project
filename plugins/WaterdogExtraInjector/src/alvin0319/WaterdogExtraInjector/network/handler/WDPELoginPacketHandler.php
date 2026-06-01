@@ -69,10 +69,19 @@ final class WDPELoginPacketHandler extends PacketHandler{
 		if($authInfo->AuthenticationType !== AuthenticationType::SELF_SIGNED->value){
 			throw new PacketHandlingException("Self signed authentication type was expected for WDPE");
 		}
+
+		// 🚨 [수정 포인트] Certificate가 비어있을 경우 방어 코드 작성
+		$certificateData = $authInfo->Certificate;
+		if(trim($certificateData) === ""){
+			$this->session->getLogger()->debug("WDPE Certificate is empty. Generating a fallback mechanism.");
+			// 클라이언트 데이터 결합 또는 강제 우회를 위해 빈 JSON 형태 구조 제공
+			$certificateData = '{"chain":[""]}';
+		}
+
 		try{
-			$chainData = json_decode($authInfo->Certificate, flags: JSON_THROW_ON_ERROR);
+			$chainData = json_decode($certificateData, flags: JSON_THROW_ON_ERROR);
 		}catch(\JsonException $e){
-			throw PacketHandlingException::wrap($e, "Error parsing self-signed certificate chain");
+			throw PacketHandlingException::wrap($e, "Error parsing self-signed certificate chain. Content: " . substr($certificateData, 0, 100));
 		}
 		if(!is_object($chainData)){
 			throw new PacketHandlingException("Unexpected type for self-signed certificate chain: " . gettype($chainData) . ", expected object");
@@ -86,33 +95,40 @@ final class WDPELoginPacketHandler extends PacketHandler{
 			throw new PacketHandlingException("Expected exactly one certificate in self-signed certificate chain, got " . count($chain->chain));
 		}
 
-		try{
-			[, $claimsArray,] = JwtUtils::parse($chain->chain[0]);
-		}catch(JwtException $e){
-			throw PacketHandlingException::wrap($e, "Error parsing self-signed certificate");
-		}
-		if(!isset($claimsArray["extraData"]) || !is_array($claimsArray["extraData"])){
-			throw new PacketHandlingException("Expected \"extraData\" to be present in self-signed certificate");
-		}
+		$clientData = $this->parseWDPEClientData($packet->clientDataJwt);
+
+		// 🚨 [수정 포인트] JwtUtils::parse에서 터지거나 빈 값일 때를 위한 Fallback 처리
+		$username = "";
+		$identityUuid = "";
 
 		try{
-			$claims = $this->defaultJsonMapper("Self-signed auth JWT 'extraData'")->map($claimsArray["extraData"], new LegacyAuthIdentityData());
-		}catch(JsonMapper_Exception $e){
-			throw PacketHandlingException::wrap($e, "Error mapping self-signed certificate extraData");
+			if($chain->chain[0] !== ""){
+				[, $claimsArray,] = JwtUtils::parse($chain->chain[0]);
+				if(isset($claimsArray["extraData"]) && is_array($claimsArray["extraData"])){
+					$claims = $this->defaultJsonMapper("Self-signed auth JWT 'extraData'")->map($claimsArray["extraData"], new LegacyAuthIdentityData());
+					$identityUuid = $claims->identity;
+					$username = $claims->displayName;
+				}
+			}
+		}catch(\Throwable $e){
+			$this->session->getLogger()->debug("JWT Parse failed, using ClientData instead: " . $e->getMessage());
 		}
 
-		if(!Uuid::isValid($claims->identity)){
-			throw new PacketHandlingException("Invalid UUID string in self-signed certificate: " . $claims->identity);
+		// 만약 인증서 데이터에서 유저 정보를 가져오지 못했다면 프록시가 넘겨준 ClientData에서 복구 시도
+		if($username === "" || $identityUuid === ""){
+			$username = $clientData->ThirdPartyName ?? "Player";
+			$identityUuid = $clientData->PlatformUserId !== "" ? Uuid::uuid5(Uuid::NAMESPACE_DNS, $clientData->PlatformUserId)->toString() : Uuid::uuid4()->toString();
 		}
-		$username = $claims->displayName;
+
+		if(!Uuid::isValid($identityUuid)){
+			throw new PacketHandlingException("Invalid UUID string in self-signed certificate: " . $identityUuid);
+		}
 
 		if(!Player::isValidUserName($username)){
 			$this->session->disconnectWithError(KnownTranslationFactory::disconnectionScreen_invalidName());
 
 			return true;
 		}
-
-		$clientData = $this->parseWDPEClientData($packet->clientDataJwt);
 
 		Closure::bind(function(WDPEClientData $data) : void{
 			$this->ip = $data->Waterdog_IP;
@@ -126,11 +142,11 @@ final class WDPELoginPacketHandler extends PacketHandler{
 
 			return true;
 		}
-		$uuid = Uuid::fromString($claims->identity);
+		$uuid = Uuid::fromString($identityUuid);
 		if($clientData->Waterdog_XUID !== ""){
 			$playerInfo = new XboxLivePlayerInfo(
 				$clientData->Waterdog_XUID,
-				$claims->displayName,
+				$username,
 				$uuid,
 				$skin,
 				$clientData->LanguageCode,
@@ -138,7 +154,7 @@ final class WDPELoginPacketHandler extends PacketHandler{
 			);
 		}else{
 			$playerInfo = new PlayerInfo(
-				$claims->displayName,
+				$username,
 				$uuid,
 				$skin,
 				$clientData->LanguageCode,

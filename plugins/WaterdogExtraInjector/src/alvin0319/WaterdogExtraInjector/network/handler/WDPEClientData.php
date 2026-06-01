@@ -153,4 +153,7 @@ final class WDPEClientData{
 
 	/** @required */
 	public string $Waterdog_IP;
+
+	// 🚨 [새로 추가된 마인크래프트 비속어 필터링 옵션 필드]
+	public bool $FilterProfanity = false;
 }
