@@ -1,0 +1,20 @@
+{
+    "name": "alvin0319/redisconnector",
+    "type": "project",
+    "require": {
+        "predis/predis": "^3.2"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "alvin0319",
+            "email": "alvin7810@naver.com"
+        }
+    ],
+	"require-dev": {
+		"phpstan/phpstan": "^2.1"
+	},
+	"scripts": {
+		"lint": "../../bin/php7/bin/php vendor/bin/phpstan analyse --memory-limit=2G src"
+	}
+}
