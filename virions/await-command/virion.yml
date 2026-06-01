@@ -1,0 +1,5 @@
+name: await-command
+author: alvin0319
+antigen: alvin0319\AwaitCommand
+version: 1.0.0
+api: 5.0.0

@@ -1,0 +1,26 @@
+includes:
+  - phpstan-baselines/actual-bugs.neon
+  - phpstan-baselines/phpstan-bugs.neon
+  - phpstan-baselines/pmmp-type-bugs.neon
+
+parameters:
+  level: 8
+  bootstrapFiles:
+    - phar://PocketMine-MP.phar/vendor/autoload.php
+  scanDirectories:
+    - virions
+  excludePaths: []
+
+rules:
+#  - alvin0319\PHPStan\Rules\YieldInTryCatchRule
+  - alvin0319\PHPStan\Rules\UnusedGeneratorReturnValueRule
+
+services:
+#  -
+#    class: alvin0319\PHPStan\Rules\YieldInTryCatchRule
+#    tags:
+#      - phpstan.rules.rule
+  -
+    class: alvin0319\PHPStan\Rules\UnusedGeneratorReturnValueRule
+    tags:
+      - phpstan.rules.rule
