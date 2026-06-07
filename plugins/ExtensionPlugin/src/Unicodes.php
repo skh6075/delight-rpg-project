@@ -22,6 +22,13 @@ enum Unicodes : string {
 	case BOX_RUBY = "0xE00A";
 	case RUBY = "0xE00B";
 
+	case NORMAL = "TODO1";
+	case RARE = "TODO2";
+	case EPIC = "TODO3";
+	case UNIQUE = "TODO4";
+	case LEGENDARY = "TODO5";
+	case MYTHIC = "TODO6";
+
 	public function toString(): string {
 		static $cache = [];
 		return $cache[$this->name] ??= mb_chr((int) hexdec($this->value));
