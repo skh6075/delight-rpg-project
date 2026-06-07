@@ -1,0 +1,10 @@
+name: XuidCore
+author: alvin0319
+main: alvin0319\XuidCore\XuidCore
+version: 1.0.0
+api: 5.0.0
+
+src-namespace-prefix: alvin0319\XuidCore
+
+depend:
+  - ExtensionPlugin

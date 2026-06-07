@@ -1,0 +1,28 @@
+name: EconomyAPI
+version: 1.0.0
+api: 5.0.0
+main: alvin0319\EconomyAPI\EconomyAPI
+author: [alvin0319, skh6075]
+
+depend:
+  - StarGatePolyfill
+  - ExtensionPlugin
+  - XuidCore
+
+src-namespace-prefix: alvin0319\EconomyAPI
+
+permissions:
+  economyapi.command.currency:
+    default: op
+  economyapi.command.give:
+    default: op
+  economyapi.command.take:
+    default: op
+  economyapi.command.set:
+    default: op
+  economyapi.command.top:
+    default: op
+  economyapi.command.mymoney:
+    default: true
+  economyapi.command.pay:
+    default: true

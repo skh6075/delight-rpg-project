@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace alvin0319\SessionManager;
 
+use Generator;
 use pocketmine\event\EventPriority;
 use pocketmine\event\player\PlayerLoginEvent;
 use pocketmine\event\player\PlayerQuitEvent;
@@ -16,7 +17,7 @@ use SOFe\AwaitGenerator\Await;
 use function count;
 
 /**
- * @phpstan-type SessionCreateCallback = \Closure(string, ?Player=, bool=) : \Generator<mixed, mixed, mixed, SessionHandle<BaseSession>|null>
+ * @phpstan-type SessionCreateCallback = \Closure(string, ?Player=, bool=) : Generator<mixed, mixed, mixed, SessionHandle<BaseSession>|null>
  */
 final class SessionManager extends PluginBase{
 	use SingletonTrait;
@@ -73,7 +74,7 @@ final class SessionManager extends PluginBase{
 		}
 
 		foreach($sessionsToSave as $session){
-			Await::f2c(function() use ($session) : \Generator{
+			Await::f2c(function() use ($session) : Generator{
 				try{
 					yield from $session->save(true);
 					$plugin = $this->sessionToPlugin[$session] ?? null;
@@ -130,12 +131,12 @@ final class SessionManager extends PluginBase{
 		}
 
 		$player->setNoClientPredictions(true);
-		Await::f2c(function() use ($player) : \Generator{
+		Await::f2c(function() use ($player) : Generator{
 			try{
 				if(!$player->isConnected()){
 					return;
 				}
-				/** @phpstan-var list<\Generator<mixed, mixed, mixed, SessionHandle<BaseSession>|null>> $generators */
+				/** @phpstan-var list<Generator<mixed, mixed, mixed, SessionHandle<BaseSession>|null>> $generators */
 				$generators = [];
 				/** @phpstan-var list<Plugin> $plugins */
 				$plugins = [];
@@ -190,7 +191,7 @@ final class SessionManager extends PluginBase{
 		}
 		$sessions = $this->sessions[$xuid];
 		unset($this->sessions[$xuid]);
-		Await::f2c(function() use ($sessions) : \Generator{
+		Await::f2c(function() use ($sessions) : Generator{
 			try{
 				foreach($sessions as $session){
 					yield from $session->save(true);
@@ -204,5 +205,16 @@ final class SessionManager extends PluginBase{
 				$this->getLogger()->logException($e);
 			}
 		});
+	}
+
+	public static function safelyDisposeSession(?SessionHandle $handle, ?Plugin $ownedPlugin = null): Generator{
+		$ownedPlugin ??= SessionManager::getInstance();
+		if($handle !== null && !$handle->isDisposed() && $handle->getLifecycleState() !== SessionLifecycleState::DISPOSED){
+			try{
+				yield from $handle->dispose();
+			}catch(\Throwable $e){
+				$ownedPlugin->getLogger()->logException($e);
+			}
+		}
 	}
 }
